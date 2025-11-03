@@ -7,11 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDrawing = false; // 描画中かどうかのフラグ
     let dpr = window.devicePixelRatio || 1; // 高解像度ディスプレイ対応
 
-    // --- 描画設定 ---
-    ctx.strokeStyle = 'black'; // 線の色
-    ctx.lineWidth = 5;         // 線の太さ (PoCのため固定)
-    ctx.lineCap = 'round';     // 線の先端を丸く
-    ctx.lineJoin = 'round';    // 線の接合点を丸く
+    // --- 描画設定 (初期化時にまとめて設定) ---
+    function applyContextSettings() {
+        ctx.strokeStyle = 'black'; // 線の色
+        ctx.lineWidth = 5;         // 線の太さ (PoCのため固定)
+        ctx.lineCap = 'round';     // 線の先端を丸く
+        ctx.lineJoin = 'round';    // 線の接合点を丸く
+    }
+
 
     // --- 初期化 ---
     function init() {
@@ -32,29 +35,39 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('resize', resizeCanvas);
     }
 
+    // ======[修正箇所 (resizeCanvas)]======
     // --- キャンバスリサイズ処理 ---
     function resizeCanvas() {
         dpr = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
         
-        // CSSのピクセルサイズと、実際のピクセルサイズを合わせる
-        canvas.width = Math.round(rect.width * dpr);
-        canvas.height = Math.round(rect.height * dpr);
+        // [修正] 基準を getBoundingClientRect ではなく window の内側サイズにする
+        const cssWidth = window.innerWidth;
+        const cssHeight = window.innerHeight;
+
+        // (1) キャンバスの「見た目」のサイズ (CSSピクセル) を設定
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
         
-        // DRPに合わせて描画スケールも調整
+        // (2) キャンバスの「解像度」 (物理ピクセル) を設定
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        
+        // (3) DRPに合わせて描画スケールも調整
+        // ※ canvas.width/height を設定するとcontextがリセットされるため、
+        //    必ずこの位置で scale し直す必要がある
         ctx.scale(dpr, dpr);
 
-        // ※ リサイズ時に線の設定がリセットされるため、再設定
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        // (4) リセットされた線の設定を再適用
+        applyContextSettings();
     }
+    // ======[修正ここまで]======
+
 
     // --- 座標取得ヘルパー ---
     function getCoords(e) {
-        // canvas.getBoundingClientRect() を使うと、
-        // ページのスクロールやズームがあっても正確な位置が取れます
+        // [修正] resizeCanvas で canvas のCSSサイズを window に
+        //        一致させたため、rect.left/top は 0 (またはそれに近い値) になるはず。
+        //        この計算方法 (clientY - rect.top) が正しく機能するようになる。
         const rect = canvas.getBoundingClientRect();
         return {
             x: (e.clientX - rect.left),
@@ -66,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 描画開始
     function onPointerDown(e) {
-        // e.pointerType === 'mouse' でマウスかタッチか判別も可能
         isDrawing = true;
         const { x, y } = getCoords(e);
         
