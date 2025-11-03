@@ -7,25 +7,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnNext = document.getElementById('btnNext');
     const btnClear = document.getElementById('btnClear');
     const pageIndicator = document.getElementById('pageIndicator');
-    const toolbar = document.getElementById('toolbar'); // ツールバーの高さを取得するため
+    const toolbar = document.getElementById('toolbar'); 
+
+    // ======[修正箇所 (ツールボタン)]======
+    const btnPen = document.getElementById('btnPen');
+    const btnEraser = document.getElementById('btnEraser');
+    // ======[修正ここまで]======
 
     // --- 状態 ---
     let isDrawing = false; // 描画中かどうかのフラグ
     let dpr = window.devicePixelRatio || 1; // 高解像度ディスプレイ対応
     
-    // ======[修正箇所 (ページ状態)]======
     let currentPageIndex = 0;
     let pageDrawings = []; // 全ページの「絵」を保存する金庫 (DataURL文字列の配列)
+    
+    // ======[修正箇所 (ツール状態)]======
+    let currentTool = 'pen'; // 'pen' または 'eraser'
+    let penWidth = 5;
+    let eraserWidth = 30; // 消しゴムは太め
+    const CANVAS_BG_COLOR = '#f0f0f0'; // キャンバスの背景色
     // ======[修正ここまで]======
 
 
-    // --- 描画設定 (初期化時にまとめて設定) ---
+    // ======[修正箇所 (applyContextSettings)]======
+    // --- 描画設定 (ツールに応じて設定を切り替え) ---
     function applyContextSettings() {
-        ctx.strokeStyle = 'black'; // 線の色
-        ctx.lineWidth = 5;         // 線の太さ (PoCのため固定)
-        ctx.lineCap = 'round';     // 線の先端を丸く
-        ctx.lineJoin = 'round';    // 線の接合点を丸く
+        if (currentTool === 'pen') {
+            // ペンモード
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = penWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        } else if (currentTool === 'eraser') {
+            // 消しゴムモード (背景色で太く塗る)
+            ctx.strokeStyle = CANVAS_BG_COLOR;
+            ctx.lineWidth = eraserWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
     }
+    // ======[修正ここまで]======
 
 
     // --- 初期化 ---
@@ -45,40 +66,50 @@ document.addEventListener('DOMContentLoaded', () => {
         // リサイズ
         window.addEventListener('resize', resizeCanvas);
         
-        // ======[修正箇所 (ボタンイベント)]======
-        // 前のページへ
+        // ページ操作ボタン
         btnPrev.addEventListener('click', () => {
             if (currentPageIndex > 0) {
                 saveCurrentPage(); // (1) 現在の絵を保存
                 loadPage(currentPageIndex - 1); // (2) 前のページを読み込む
             }
         });
-
-        // 次のページへ
         btnNext.addEventListener('click', () => {
             saveCurrentPage(); // (1) 現在の絵を保存
             loadPage(currentPageIndex + 1); // (2) 次のページを読み込む
         });
-        
-        // このページを消去
         btnClear.addEventListener('click', () => {
             const cssWidth = canvas.width / dpr;
             const cssHeight = canvas.height / dpr;
             ctx.clearRect(0, 0, cssWidth, cssHeight); // キャンバスをまっさらに
             saveCurrentPage(); // まっさらな状態を保存
         });
+        
+        // ======[修正箇所 (ツール切り替えイベント)]======
+        btnPen.addEventListener('click', () => {
+            currentTool = 'pen';
+            applyContextSettings();
+            // UIの active クラスを更新
+            btnPen.classList.add('active');
+            btnEraser.classList.remove('active');
+        });
+        
+        btnEraser.addEventListener('click', () => {
+            currentTool = 'eraser';
+            applyContextSettings();
+            // UIの active クラスを更新
+            btnEraser.classList.add('active');
+            btnPen.classList.remove('active');
+        });
         // ======[修正ここまで]======
     }
     
     
-    // ======[修正箇所 (コアロジック新設)]======
+    // --- 中核ロジック (変更なし) ---
     
     // [中核ロジック 1] 現在のキャンバスを「画像データ」として保存
     function saveCurrentPage() {
         try {
-            // 現在のキャンバスの状態をPNG画像データ(文字列)として取得
             const dataURL = canvas.toDataURL();
-            // 金庫(配列)の現在のページ番号の位置に保存
             pageDrawings[currentPageIndex] = dataURL;
         } catch (e) {
             console.error("キャンバスの保存に失敗しました。", e);
@@ -87,73 +118,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // [中核ロジック 2] 指定ページの「画像データ」をキャンバスに復元
     function loadPage(index) {
-        // キャンバスのCSS上のサイズを取得 (clearRectやdrawImageで使う)
         const cssWidth = canvas.width / dpr;
         const cssHeight = canvas.height / dpr;
-        
-        // (1) まずキャンバスをまっさらに消去
         ctx.clearRect(0, 0, cssWidth, cssHeight);
         
-        // (2) 金庫から指定ページの画像データ(文字列)を取り出す
         const imgString = pageDrawings[index];
         
         if (imgString) {
-            // (3) 画像データがあれば、それを復元する
             const img = new Image();
             img.onload = () => {
-                // 画像の読み込み完了後に、キャンバスに描画(貼り付け)
                 ctx.drawImage(img, 0, 0, cssWidth, cssHeight);
+                // [修正] 復元後、現在のツール設定を再適用
+                applyContextSettings(); 
             };
-            img.src = imgString; // 画像ソースとして設定
+            img.src = imgString;
+        } else {
+             // [修正] 新しいページの場合も、ツール設定を適用
+            applyContextSettings();
         }
         
-        // (4) 現在のページ番号を更新
         currentPageIndex = index;
-        
-        // (5) UI（ページ番号やボタン）を更新
         updateUI();
     }
 
     // [中核ロジック 3] UI（ページ番号やボタン）の更新
     function updateUI() {
         pageIndicator.textContent = `${currentPageIndex + 1}`;
-        // 0ページ目なら「前へ」ボタンを無効化
         btnPrev.disabled = (currentPageIndex === 0);
     }
-    // ======[修正ここまで]======
+    
 
-
-    // ======[修正箇所 (resizeCanvas)]======
     // --- キャンバスリサイズ処理 ---
     function resizeCanvas() {
-        // [重要] リサイズでキャンバスが消える前に、現在の内容を保存
         saveCurrentPage();
         
         dpr = window.devicePixelRatio || 1;
         
-        // ツールバーの高さを考慮
         const toolbarHeight = toolbar.clientHeight || 40;
         const cssWidth = window.innerWidth;
-        const cssHeight = window.innerHeight - toolbarHeight; // ツールバー分を引く
+        const cssHeight = window.innerHeight - toolbarHeight; 
 
-        // (1) キャンバスの「見た目」のサイズ (CSSピクセル) を設定
         canvas.style.width = `${cssWidth}px`;
         canvas.style.height = `${cssHeight}px`;
         
-        // (2) キャンバスの「解像度」 (物理ピクセル) を設定
         canvas.width = Math.round(cssWidth * dpr);
         canvas.height = Math.round(cssHeight * dpr);
         
-        // (3) DRPに合わせて描画スケールも調整
         ctx.scale(dpr, dpr);
 
-        // (4) リセットされた線の設定を再適用
-        applyContextSettings();
+        // [修正] リサイズ後の再適用は loadPage が行う
+        // applyContextSettings(); 
         
-        // [重要] リサイズ後に、保存しておいた内容を再読み込み
         loadPage(currentPageIndex);
     }
-    // ======[修正ここまで]======
 
 
     // --- 座標取得ヘルパー ---
@@ -171,17 +188,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function onPointerDown(e) {
         isDrawing = true;
         const { x, y } = getCoords(e);
-        ctx.beginPath(); // 新しいパスを開始
-        ctx.moveTo(x, y);  // ペンを(x, y)に移動
+        ctx.beginPath(); 
+        ctx.moveTo(x, y);  
         canvas.setPointerCapture(e.pointerId);
     }
 
     // 描画中
     function onPointerMove(e) {
-        if (!isDrawing) return; // 押されていなければ何もしない
-        const { x, y } = getCoords(e);
-        ctx.lineTo(x, y); // 現在位置から(x, y)まで線を引く
-        ctx.stroke();     // 線を描画
+        if (!isDrawing) return;
+        
+        // ======[修正箇所 (getCoalescedEvents)]======
+        // [かくつき改善] 中間座標も取得して、より滑らかに描画
+        const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+        
+        for (const event of events) {
+            const { x, y } = getCoords(event);
+            ctx.lineTo(x, y); 
+        }
+        ctx.stroke(); // ループの最後でまとめて描画
+        // ======[修正ここまで]======
     }
 
     // 描画終了
@@ -190,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isDrawing = false;
         
         // [重要] 描画が終わった瞬間、現在のページ内容を「上書き保存」する
-        // これをしないと、ページを切り替えた時に「描き途中の絵」が消えてしまう
         saveCurrentPage();
         
         canvas.releasePointerCapture(e.pointerId);

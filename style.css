@@ -3,14 +3,20 @@ body, html {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100vh; /* [修正] 100% から 100vh (ビューポートの高さ) に変更 */
+    height: 100vh; /* [修正済] 100% から 100vh に変更 */
     overflow: hidden; /* ページ全体のスクロールを禁止 */
     background-color: #333; /* 背景色 */
     display: flex;
-    flex-direction: column; /* [修正] ツールバーとキャンバスを縦に並べる */
+    flex-direction: column; /* [修正済] ツールバーとキャンバスを縦に並べる */
+
+    /* ======[修正箇所 (テキスト選択の禁止)]====== */
+    /* これで描画中にテキストが選択されるのを防ぎます */
+    user-select: none;
+    -webkit-user-select: none; /* Safari用 */
+    /* ======[修正ここまで]====== */
 }
 
-/* ======[修正箇所 (UIスタイル追加)]====== */
+/* --- ツールバーのスタイル --- */
 #toolbar {
     width: 100%;
     height: 40px; /* ツールバーの高さ */
@@ -25,6 +31,11 @@ body, html {
 #toolbar button {
     padding: 5px 10px;
     font-size: 14px;
+    background: #666; /* [修正] ボタン色 */
+    border: 1px solid #888;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
 }
 #toolbar button:disabled {
     opacity: 0.5;
@@ -34,6 +45,19 @@ body, html {
     font-weight: bold;
     min-width: 30px;
     text-align: center;
+}
+
+/* ======[修正箇所 (ツールボタンのスタイル)]====== */
+#toolbar .separator {
+    width: 1px;
+    height: 24px;
+    background: #555;
+    margin: 0 5px;
+}
+/* 選択中のツールのスタイル */
+#toolbar button.active {
+    background: #007bff;
+    border-color: #0056b3;
 }
 /* ======[修正ここまで]====== */
 
@@ -46,7 +70,5 @@ body, html {
     /* [最重要] 描画中のジェスチャを無効化 */
     touch-action: none;
     
-    /* ======[修正箇所 (高さを再計算)]====== */
-    /* JSがCSSサイズを設定するため、width/height は削除 */
-    /* ======[修正ここまで]====== */
+    /* [修正済] width/height は JS が制御 */
 }
