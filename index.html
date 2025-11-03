@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Simple Drawing Test</title>
+    <title>Drawing Paging Test</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <div id="toolbar">
+        <button id="btnPrev" title="前のページへ">&lt; 前へ</button>
+        <button id="btnClear" title="このページの描画を消去">このPを消去</button>
+        <div id="pageIndicator">1</div>
+        <button id="btnNext" title="次のページへ">次へ &gt;</button>
+    </div>
     <canvas id="drawingCanvas"></canvas>
 
     <script src="draw.js" defer></script>
