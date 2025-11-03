@@ -1,0 +1,21 @@
+/* --- 基本設定 --- */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* ページ全体のスクロールを禁止 */
+    background-color: #333; /* 背景色 */
+}
+
+/* --- キャンバスのスタイル --- */
+#drawingCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: #f0f0f0; /* キャンバスの背景色（白） */
+
+    /* [最重要] 指で描画中、ブラウザのスクロールや
+       「スワイプで戻る」などのジェスチャを無効化する */
+    touch-action: none;
+}
